@@ -2,10 +2,6 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "blog",
   "main": "worker/index.ts",
-  "compatibility_date": "2024-01-01",
-  "compatibility_flags": ["nodejs_compat"],
-  "assets": {
-    "directory": ".opennext/assets",
-    "binding": "ASSETS"
-  }
+  "compatibility_date": "2024-09-23",
+  "compatibility_flags": ["nodejs_compat"]
 }
