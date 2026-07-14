@@ -19,8 +19,8 @@ test("renders the article list homepage", async () => {
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
   const html = await response.text();
   assert.match(html, /<title>Meng — Writing<\/title>/i);
-  assert.match(html, /文章/);
   assert.match(html, /把复杂的事，讲清楚/);
+  assert.doesNotMatch(html, /WRITING \/ ALL NOTES/);
   assert.match(html, /搜索文章/);
   assert.match(html, /search\?tag=/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton|Your site is taking shape/);
@@ -47,4 +47,13 @@ test("filters articles by keyword and tag", async () => {
   assert.match(tagHtml, /#随笔/);
   assert.match(tagHtml, /把复杂的事，讲清楚/);
   assert.match(tagHtml, /安静地做事，也是一种生产力/);
+});
+
+test("renders About from Markdown at the About route", async () => {
+  const response = await render("/about");
+  assert.equal(response.status, 200);
+  const html = await response.text();
+  assert.match(html, /<h1>About<\/h1>/);
+  assert.match(html, /你好，我是 Meng。/);
+  assert.match(html, /<article class="markdown-body">/);
 });

@@ -10,10 +10,6 @@ export default function Home() {
     <div className="site-page">
       <SiteNav />
       <main className="page-wrap home-page">
-        <div className="page-intro">
-          <p className="kicker">WRITING / ALL NOTES</p>
-          <h1>文章</h1>
-        </div>
         <PostList posts={posts} />
       </main>
       <footer className="site-footer"><span>© 2026 Meng</span><Link href="/about">About</Link></footer>
