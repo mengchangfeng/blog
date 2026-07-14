@@ -1,5 +1,3 @@
-import fs from "node:fs";
-import path from "node:path";
 import { marked } from "marked";
 
 export type Post = {
@@ -12,10 +10,9 @@ export type Post = {
   html: string;
 };
 
-const contentDir = path.join(process.cwd(), "content");
+const markdownFiles = import.meta.glob("../../content/*.md", { query: "?raw", import: "default", eager: true }) as Record<string, string>;
 
-function readPost(filename: string): Post {
-  const raw = fs.readFileSync(path.join(contentDir, filename), "utf8");
+function readPost(filename: string, raw: string): Post {
   const match = raw.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
   if (!match) throw new Error(`Invalid frontmatter in ${filename}`);
   const fields = Object.fromEntries(match[1].split("\n").map((line) => {
@@ -30,7 +27,7 @@ function readPost(filename: string): Post {
 }
 
 export function getPosts(): Post[] {
-  return fs.readdirSync(contentDir).filter((file) => file.endsWith(".md")).map(readPost).sort((a, b) => b.date.localeCompare(a.date));
+  return Object.entries(markdownFiles).map(([filename, raw]) => readPost(filename.split("/").pop() ?? filename, raw)).sort((a, b) => b.date.localeCompare(a.date));
 }
 
 export function getPost(slug: string): Post | undefined {
