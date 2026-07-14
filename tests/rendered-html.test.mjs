@@ -30,9 +30,10 @@ test("renders a Markdown article", async () => {
   const response = await render("/posts/%E6%8A%8A%E5%A4%8D%E6%9D%82%E7%9A%84%E4%BA%8B%E8%AE%B2%E6%B8%85%E6%A5%9A");
   assert.equal(response.status, 200);
   const html = await response.text();
-  assert.match(html, /<article class="markdown-body">/);
+  assert.match(html, /<article class="markdown-body article-content">/);
   assert.match(html, /<h2>先建立一张地图<\/h2>/);
   assert.match(html, /<pre><code class="language-ts">/);
+  assert.doesNotMatch(html, /All writing|back-link/);
 });
 
 test("filters articles by keyword and tag", async () => {
@@ -55,5 +56,5 @@ test("renders About from Markdown at the About route", async () => {
   const html = await response.text();
   assert.match(html, /<h1>About<\/h1>/);
   assert.match(html, /你好，我是 Meng。/);
-  assert.match(html, /<article class="markdown-body">/);
+  assert.match(html, /<article class="markdown-body article-content">/);
 });
