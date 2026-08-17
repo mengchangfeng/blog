@@ -1,65 +1,103 @@
 ---
-title: 把家里的电脑稳定暴露给 AI：AgentDock、域名与云服务器穿透教程
+title: 让网页版 GPT 控制自己的电脑：AgentDock MCP 与固定域名实战
 date: 2026-08-17
-description: 从安装 AgentDock 开始，用反向 SSH、Nginx、HTTPS 和 macOS LaunchAgent，把没有固定公网 IP 的电脑安全地接入一个固定域名。
-tags: [AgentDock, MCP, 反向隧道, Nginx, HTTPS, macOS]
+description: 在电脑上启动 AgentDock MCP，让网页版 ChatGPT 调用文件、终端、Git 和浏览器工具，再用域名、云服务器与反向 SSH 建立固定入口。
+tags: [AgentDock, ChatGPT, MCP, AI Agent, 反向隧道, Nginx, macOS]
 ---
 
-# 把家里的电脑稳定暴露给 AI：AgentDock、域名与云服务器穿透教程
+# 让网页版 GPT 控制自己的电脑：AgentDock MCP 与固定域名实战
 
 ## 一句话结论
 
-域名不应该直接指向家里电脑不断变化的 IP。更稳定的做法是：**域名始终指向一台有固定公网 IP 的云服务器，再让电脑主动建立一条到服务器的反向 SSH 隧道。**
+这篇文章真正要完成的事情，不是“做一条内网穿透”，而是：**在自己的电脑上启动一个 MCP 工具服务，让网页版 ChatGPT 能够读取文件、执行命令、操作 Git、调用浏览器，并把长任务留在真实电脑上继续运行。**
+
+域名和云服务器只是把这项能力安全、稳定地送到网页 GPT 面前的网络入口。
 
 最终链路如下：
 
 ```text
-ChatGPT / Claude / 其他 MCP 客户端
+网页版 ChatGPT
+       │  推理、规划、发起工具调用
+       ▼
+远程 MCP： https://agent.example.com/mcp
+                │
+        HTTPS / OAuth
                 │
                 ▼
-       https://agent.example.com
+云服务器 Nginx :443
                 │
-                ▼
-        云服务器 Nginx :443
-                │
-                ▼
-      服务器 127.0.0.1:18765
+服务器 127.0.0.1:18765
                 │
          反向 SSH 隧道
+                ▼
+Mac AgentDock：127.0.0.1:8765
                 │
                 ▼
-       Mac 127.0.0.1:8765
-                │
-                ▼
-             AgentDock
+文件 · Shell · Git · 浏览器 · Skills · 长任务
 ```
 
-这个方案有三个重要边界：
+这里有三层职责：
 
-- 家里的电脑不需要固定公网 IP，也不需要路由器端口映射；
-- 云服务器只公开 80/443，隧道端口只监听服务器回环地址；
-- AgentDock 继续只监听 Mac 的 `127.0.0.1`，不直接暴露给局域网或公网。
+- **ChatGPT 是大脑**：理解目标、拆解步骤、决定何时调用工具；
+- **AgentDock 是手和工作台**：在真实电脑上读写文件、运行程序并保存任务状态；
+- **域名和服务器是门**：把本地 MCP 变成网页 ChatGPT 能连接的固定 HTTPS 地址。
 
 本文以 macOS、Ubuntu 24.04、Nginx 和 AgentDock 为例。示例中的域名、IP、用户名和路径都是占位符，请替换成自己的值。
 
-## 一、什么时候需要这种方案
+## 目标：给网页 GPT 一台真正能操作的电脑
 
 AgentDock 是一个面向 AI Agent 的工具运行时，可以通过 MCP 提供文件、命令、Git、浏览器和任务执行能力。它本身不负责聊天或模型推理，而是让远端 AI 客户端在明确权限边界内操作真实电脑。安装与平台说明见 [AgentDock 官方文档](https://uvwt.github.io/agentdock-docs/zh-CN/docs/getting-started/install)。
 
-如果 MCP 客户端和 AgentDock 在同一台电脑上，本地地址已经够用：
+传统网页聊天只能根据你粘贴进去的文本回答。它不知道项目当前有哪些文件，也看不到运行日志，更不能自己执行测试。接入电脑 MCP 后，对话会变成另一种工作方式：
+
+```text
+你：检查这个项目为什么启动失败，修复后运行测试。
+
+ChatGPT：
+1. 调用文件搜索工具了解项目结构；
+2. 读取配置和错误日志；
+3. 调用 Shell 复现问题；
+4. 修改指定文件；
+5. 运行测试并读取真实输出；
+6. 汇报修改、验证结果和仍存在的风险。
+```
+
+文件没有被永久复制到聊天窗口里，命令也不是模型“想象出来”的。AgentDock 在你的电脑上执行操作，再把结构化结果返回给 ChatGPT。
+
+这特别适合：
+
+- 在网页 ChatGPT 中维护本地项目，而不必反复复制代码和日志；
+- 用手机发出任务，让家里或办公室的电脑执行构建、检查和部署；
+- 让同一段对话调用多台电脑或服务器上的不同 AgentDock；
+- 把耗时任务留在真实环境中运行，稍后继续读取状态；
+- 复用电脑已有的 Git、SSH、浏览器登录状态和开发工具。
+
+如果 MCP 客户端和 AgentDock 在同一台电脑上，本地地址就够用：
 
 ```text
 http://127.0.0.1:8765/mcp
 ```
 
-如果 ChatGPT、手机或外部客户端要访问这台电脑，就需要一个公网入口。常见选择有两种：
+但网页版 ChatGPT 运行在远端，无法访问你电脑的 `127.0.0.1`，所以还需要一个它能连接的 HTTPS MCP 入口。常见选择有两种：
 
 1. **Cloudflare Tunnel**：配置少，适合快速使用；Quick Tunnel 地址会变化，Named Tunnel 则需要 Cloudflare 托管域名。
 2. **自己的云服务器**：域名和入口完全由自己管理，适合已经有 VPS、Nginx 和 HTTPS 运维经验的人。
 
-本文讲第二种方案。
+本文先把电脑 MCP 和网页 ChatGPT 的使用逻辑讲清楚，再实现第二种固定入口。
 
-## 二、准备条件与成功标准
+## “无限 token”到底是什么意思
+
+把这类方案称为“无限 token”很有吸引力，但字面上并不准确。
+
+AgentDock 不会取消 ChatGPT 套餐限制、消息次数限制或模型上下文窗口，也不应该被用来绕过任何服务规则。它带来的变化是：**工作状态和大文件留在电脑上，模型按需调用工具，不必把整个代码库、全部日志和每次命令输出都反复粘贴进对话。**
+
+例如，一个包含十万行代码的仓库不需要一次性进入模型上下文。ChatGPT 可以先搜索文件名，再读取少量相关代码，执行测试后只接收必要输出；AgentDock 还能截断过长结果，并保存长任务状态。这会显著减少上下文浪费，让同一段对话更像“操作远程工作站”，而不是“不断上传材料”。
+
+AgentDock 项目把其中一个价值描述为：在真实环境中写代码、改配置、运行命令和部署，而不依赖专用 Codex coding quota。但对用户来说，更准确的说法仍然是：
+
+> 不是 token 真的无限，而是把 AI 的上下文用在判断上，把文件、进程和任务状态放在电脑上。
+
+## 准备条件与成功标准
 
 你需要准备：
 
@@ -88,7 +126,7 @@ AgentDock 本地端口：8765
 - Mac 重新登录或 SSH 断线后，隧道能够自动恢复；
 - 服务器的 18765 端口只监听 `127.0.0.1`。
 
-## 三、在 Mac 上安装 AgentDock
+## 在 Mac 上启动 AgentDock MCP
 
 普通用户应优先使用官方 macOS DMG，不需要自己编译 Go 和 Swift 项目。打开 [AgentDock Releases](https://github.com/uvwt/agentdock/releases/latest)，下载：
 
@@ -119,7 +157,103 @@ curl http://127.0.0.1:8765/healthz
 
 版本号可能随着发布更新，以实际安装版本为准。
 
-## 四、配置域名解析
+打开 AgentDock 控制面板后，可以看到三类关键信息：
+
+- **本地 MCP URL**：默认是 `http://127.0.0.1:8765/mcp`；
+- **Bearer Token**：适合支持自定义请求头的 MCP 客户端；
+- **OAuth 密码与公网 Origin**：用于需要浏览器授权流程的远程客户端。
+
+AgentDock 的工具权限很高。它可以执行 Shell、修改文件和调用 Git，所以应把“匿名 MCP 能否访问”列为启动后的第一项安全测试：
+
+```bash
+curl -o /dev/null -w '%{http_code}\n' \
+  -X POST \
+  -H 'Content-Type: application/json' \
+  --data '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"local-check","version":"1"}}}' \
+  http://127.0.0.1:8765/mcp
+```
+
+如果已经启用 Bearer Token，匿名请求应返回 401。
+
+## 网页版 ChatGPT 如何连接电脑 MCP
+
+当固定 HTTPS 地址准备好后，网页 ChatGPT 可以把它添加成远程 MCP 连接。根据 OpenAI 在 2026 年 8 月的官方说明，测试 MCP 服务器的入口位于开发者模式：
+
+1. 打开 ChatGPT 的 **Settings**；
+2. 进入 **Security and login**；
+3. 开启 **Developer mode**；
+4. 打开 **ChatGPT Plugins**；
+5. 创建连接，在 **Connection** 中选择公网端点；
+6. 填写完整 MCP URL，例如 `https://agent.example.com/mcp`；
+7. 检查 ChatGPT 发现的工具、描述和认证信息；
+8. 新建对话，从工具菜单中启用这条 MCP 连接。
+
+官方同时说明，开发者模式是否可用会受账号和工作区策略影响，界面位置也可能继续调整。应以 [OpenAI 官方 Connect and test your plugin 文档](https://developers.openai.com/apps-sdk/deploy/connect-chatgpt) 为准。
+
+首次连接时，ChatGPT 会读取 MCP 服务暴露的工具清单。不要急着下达“帮我整理整台电脑”这种宽泛任务，先做几个低风险验证：
+
+```text
+列出允许访问的工作目录，不修改任何文件。
+
+读取某个项目的 Git 状态，只汇报未提交文件。
+
+运行 agentdock --version 和系统信息，只返回摘要。
+
+在指定测试目录创建 hello.txt，写入 hello，然后读回来。
+```
+
+这些任务分别验证了目录边界、只读 Git、命令执行和最小写入闭环。
+
+## 网页 GPT 控制电脑的正确使用方式
+
+MCP 接通以后，提示词最好包含四类信息：目标、范围、权限和验收标准。
+
+一个容易失控的请求是：
+
+```text
+帮我把项目弄好。
+```
+
+更合适的请求是：
+
+```text
+检查 ~/Projects/demo 为什么无法启动。
+先只读取代码、配置、Git 状态和错误日志，不要修改。
+找出原因后给出最小修复方案，等我确认再改。
+成功标准是 npm test 和 npm run build 都通过。
+不要提交或推送 Git。
+```
+
+如果希望它直接执行，也可以明确授权：
+
+```text
+修复 ~/Projects/demo 当前的启动错误。
+允许修改该仓库内文件和安装项目依赖，不允许修改系统网络设置。
+修复后运行测试与构建，更新 README，并只提交本次相关文件，不要推送。
+```
+
+几个值得坚持的规则：
+
+- 先让工具读取真实状态，再讨论方案；
+- 写明允许操作的目录，不要默认授权整个用户目录；
+- 删除、覆盖、推送、部署、发消息等动作单独确认；
+- 要求返回命令退出码、测试结果和最终 Git diff；
+- 长任务要有明确完成条件，而不是无限循环尝试；
+- 不把密码、私钥、Token 显示在聊天、截图或公开日志中。
+
+## 为什么还需要域名和云服务器
+
+本地 MCP 已经证明 AgentDock 能控制电脑，但网页版 ChatGPT 仍然无法访问 `127.0.0.1`。域名和服务器解决的是“从网页到电脑”的网络可达性，不是 Agent 能力本身。
+
+域名不应该直接指向家里电脑不断变化的 IP。更稳定的做法是：域名始终指向一台有固定公网 IP 的云服务器，再让电脑主动建立一条到服务器的反向 SSH 隧道。
+
+这个固定入口保持三个边界：
+
+- 家里的电脑不需要固定公网 IP，也不需要路由器端口映射；
+- 云服务器只公开 80/443，隧道端口只监听服务器回环地址；
+- AgentDock 继续只监听 Mac 的 `127.0.0.1`，不直接暴露给局域网或公网。
+
+## 配置域名解析
 
 在 DNS 服务商处添加 A 记录：
 
@@ -140,7 +274,7 @@ dig +short A agent.example.com
 
 如果电脑使用了 Clash 等 Fake-IP 模式，本地可能看到 `198.18.0.0/16` 地址。这不一定代表公网 DNS 配错，可以通过 DNS over HTTPS 或在其他网络上复核权威结果。
 
-## 五、先跑通一次反向 SSH
+## 先跑通一次反向 SSH
 
 不要一开始就写自启动服务。先用现有服务器管理账号验证最小链路：
 
@@ -169,7 +303,7 @@ curl http://127.0.0.1:18765/healthz
 - 18765 已被其他进程占用；
 - `ExitOnForwardFailure` 已经在原终端给出了明确错误。
 
-## 六、不要长期使用管理员密钥
+## 不要长期使用管理员密钥
 
 最小闭环成功以后，应建立一个没有 sudo 权限的专用账号和专用密钥。
 
@@ -224,7 +358,7 @@ ssh -NT \
   agentdock-tunnel@203.0.113.10
 ```
 
-## 七、让 macOS 自动保持隧道
+## 让 macOS 自动保持隧道
 
 创建：
 
@@ -295,7 +429,7 @@ launchctl kickstart -k \
 
 LaunchAgent 会在用户登录后运行。如果要求“机器开机但无人登录时也能访问”，需要改成 LaunchDaemon，并重新设计密钥、文件归属和运行用户，不能简单把同一个 plist 搬到 `/Library/LaunchDaemons`。
 
-## 八、在云服务器配置 Nginx
+## 在云服务器配置 Nginx
 
 新建：
 
@@ -349,7 +483,7 @@ curl http://agent.example.com/healthz
 
 每次都应先执行 `nginx -t`，不要让一个新站点的语法错误影响服务器上的其他业务。
 
-## 九、申请 HTTPS 证书
+## 申请 HTTPS 证书
 
 安装了 Certbot 和 Nginx 插件后执行：
 
@@ -375,7 +509,7 @@ systemctl is-active certbot.timer
 curl https://agent.example.com/healthz
 ```
 
-## 十、把 AgentDock 切换到固定域名
+## 把 AgentDock 切换到固定域名
 
 先确认反向 SSH、Nginx 和 HTTPS 已经全部通过，再修改 AgentDock。不要在公网链路尚未打通时提前打开 OAuth。
 
@@ -428,7 +562,7 @@ AGENTDOCK_TUNNEL_MODE='none'
 https://agent.example.com/mcp
 ```
 
-## 十一、完整验收
+## 完整验收
 
 ### 1. 本地 Core
 
@@ -499,7 +633,7 @@ unset AGENTDOCK_TOKEN
 
 正常响应应包含 AgentDock 的 `serverInfo`。
 
-## 十二、常见故障
+## 常见故障
 
 ### 公网返回 502
 
@@ -564,7 +698,7 @@ tail -50 ~/Library/Logs/AgentDock/reverse-tunnel.err.log
 
 Quick Tunnel 地址本来就可能在 Tunnel 重启后变化，旧域名出现 NXDOMAIN 属于预期行为。如果需要长期稳定入口，应使用 Named Tunnel 或本文的固定服务器方案，不要把 Quick Tunnel URL 写死在客户端配置中。
 
-## 十三、安全清单
+## 安全清单
 
 上线前逐项确认：
 
