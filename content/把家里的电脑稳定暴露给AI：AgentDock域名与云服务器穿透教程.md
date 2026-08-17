@@ -5,8 +5,6 @@ description: 在电脑上启动 AgentDock MCP，让网页版 ChatGPT 调用文�
 tags: [AgentDock, ChatGPT, MCP, AI Agent, 反向隧道, Nginx, macOS]
 ---
 
-# 让网页版 GPT 控制自己的电脑：AgentDock MCP 与固定域名实战
-
 ## 一句话结论
 
 这篇文章真正要完成的事情，不是“做一条内网穿透”，而是：**在自己的电脑上启动一个 MCP 工具服务，让网页版 ChatGPT 能够读取文件、执行命令、操作 Git、调用浏览器，并把长任务留在真实电脑上继续运行。**
