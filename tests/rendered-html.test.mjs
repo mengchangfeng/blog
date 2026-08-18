@@ -32,7 +32,7 @@ test("renders a Markdown article", async () => {
   assert.equal(response.status, 200);
   const html = await response.text();
   assert.match(html, /<article class="markdown-body article-content">/);
-  assert.match(html, /<h2>“无限 token”到底是什么意思<\/h2>/);
+  assert.match(html, /<h2>先把 AgentDock 在本机跑通<\/h2>/);
   assert.match(html, /<pre><code class="language-bash">/);
   assert.doesNotMatch(html, /All writing|back-link/);
 });
