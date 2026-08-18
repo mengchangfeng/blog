@@ -13,6 +13,8 @@ tags: [ChatGPT, AI Agent, 自动化开发, Git, 项目管理]
 
 所以我最近给项目加了一套定时开发工作流。
 
+这套工作流的脱敏参考实现放在 [GPT-TaskBoard](https://github.com/mengchangfeng/GPT-TaskBoard)，电脑 MCP 运行时使用 [AgentDock](https://github.com/uvwt/agentdock)。前者负责任务状态、Git/worktree 和验收，后者负责让网页 GPT 触达真实电脑。
+
 ## 先把项目文档整理好
 
 定时任务不是最重要的。

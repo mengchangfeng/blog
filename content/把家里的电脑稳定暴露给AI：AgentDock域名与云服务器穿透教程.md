@@ -11,6 +11,8 @@ tags: [AgentDock, ChatGPT, MCP, AI Agent, 反向隧道, Nginx, macOS]
 
 我用的是 [AgentDock](https://github.com/uvwt/agentdock)。
 
+本文对应的工作流仓库是 [GPT-TaskBoard](https://github.com/mengchangfeng/GPT-TaskBoard)，用于保存任务板、Git/worktree、定时开发和验收规则；AgentDock 只负责提供本机 MCP 运行时。
+
 本地跑起来很简单，真正麻烦的是另一件事：
 
 > 网页版 GPT 怎么稳定访问我家里 Mac 上的 MCP？
