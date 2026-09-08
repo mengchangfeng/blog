@@ -39,3 +39,12 @@ tags: [标签1, 标签2, 标签3]
 - `tags` 使用 Markdown 数组形式，例如 `[AgentDock, ChatGPT, MCP]`。
 - `date` 使用 `YYYY-MM-DD` 格式。
 - 文件名用于生成文章 URL slug，可以与标题不同；修改文件名会改变文章 URL，应谨慎操作。
+
+## 技术播客稿
+
+- 技术播客口播稿放在 `播客/`，不放进 `content/`。
+- 写作前同样先读根目录 `写作风格.md`，并优先保证口播自然、短句和真实过程。
+- 稿件 frontmatter 至少包含 `title`、`date`、`description`、`tags`、`format: podcast-script`、`status`、`duration`。
+- 正文不要重复一级标题，章节从 `##` 开始。
+- `播客/README.md` 维护稿件索引；新增、重命名或归档稿件时同步更新。
+- 网站公开文章仍放在 `content/*.md`。只有用户明确要求发布文章时，才从播客稿整理单独的网站版本，避免一份文件同时承担两种表达。

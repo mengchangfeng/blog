@@ -1,8 +1,18 @@
-# vinext-starter
+# Meng Blog
 
-A clean full-stack starter running on
-[vinext](https://github.com/cloudflare/vinext), with optional Cloudflare D1 and
-Drizzle support.
+个人博客与技术播客内容仓。
+
+## 内容目录
+
+- `content/*.md`：网站公开文章，按 frontmatter 构建页面。
+- `播客/*.md`：技术播客口播稿与 show notes，不直接参与网站构建。
+- `写作风格.md`：文章与播客共同遵循的写作风格。
+
+## 开发
+
+本项目基于 vinext、Cloudflare 与 Markdown 内容构建。
+
+The site runs on [vinext](https://github.com/cloudflare/vinext), with optional Cloudflare D1 and Drizzle support.
 
 ## Prerequisites
 
