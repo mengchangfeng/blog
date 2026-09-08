@@ -1,14 +1,11 @@
 ---
 title: 我给 AI 搭了一个跨设备项目路由层
 date: 2026-09-08
-description: 从一个服务器随手记录目录开始，我用 Git、PROJECTS.md、AGENTS.md 与 Codex 把 Mac 和常驻服务器接成跨设备项目路由，并给 Windows GPU 节点预留同一套入口。
-tags: [技术播客, AI Agent, Codex, MCP, Git, 多设备开发]
-format: podcast-script
-status: draft
-duration: 20-25 分钟
+description: 从服务器随手记录目录开始，我用 Git、PROJECTS.md、AGENTS.md、MCP 和 Codex 把 Mac 与常驻服务器接成跨设备项目路由，并为 Windows GPU 节点预留执行入口。
+tags: [ChatGPT, AI Agent, Codex, MCP, Git, 多设备开发]
 ---
 
-## 开场
+## 真正麻烦的是：AI 应该去哪里写
 
 最近我一直在用网页版 GPT，通过 MCP 控制自己的 Mac 和云服务器，也把 Windows GPU 节点放进同一套设备规划里。
 
@@ -38,7 +35,7 @@ AI 应该自己知道这是 Episode，应该进入 `episode-learning`，而不�
 
 它是一个很小的项目路由层。
 
-这期就记录一下它是怎么从“服务器上放个随手记录目录”，慢慢变成跨三台设备的。
+这篇记录一下，它是怎么从“服务器上放个随手记录目录”，慢慢变成一个跨设备项目路由层的。
 
 ## 最开始只是想在服务器上随手记点东西
 
@@ -479,7 +476,7 @@ Mac / Server / Windows 的实际 checkout
 
 Agent 可以忘记上一段对话，但下一次仍然能从同一个入口重新找到项目。
 
-## 结尾
+## 先保持小，先一直用
 
 以前我更关注 Prompt 怎么写、模型选哪个、一个 Agent 能不能连续做很久。
 

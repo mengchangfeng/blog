@@ -20,6 +20,7 @@ test("renders the article list homepage", async () => {
   const html = await response.text();
   assert.match(html, /<title>Meng — Writing<\/title>/i);
   assert.match(html, /让网页版 GPT 控制自己的电脑/);
+  assert.match(html, /我给 AI 搭了一个跨设备项目路由层/);
   assert.doesNotMatch(html, /WRITING \/ ALL NOTES/);
   assert.match(html, /搜索文章/);
   assert.match(html, /search\?tag=/);
@@ -32,9 +33,20 @@ test("renders a Markdown article", async () => {
   assert.equal(response.status, 200);
   const html = await response.text();
   assert.match(html, /<article class="markdown-body article-content">/);
-  assert.match(html, /<h2>先把 AgentDock 在本机跑通<\/h2>/);
+  assert.match(html, /<h2>连接链路<\/h2>/);
   assert.match(html, /<pre><code class="language-bash">/);
   assert.doesNotMatch(html, /All writing|back-link/);
+});
+
+
+test("renders the cross-device project routing article", async () => {
+  const slug = encodeURIComponent("我给AI搭了一个跨设备项目路由层");
+  const response = await render(`/posts/${slug}`);
+  assert.equal(response.status, 200);
+  const html = await response.text();
+  assert.match(html, /<h1>我给 AI 搭了一个跨设备项目路由层<\/h1>/);
+  assert.match(html, /<h2>真正麻烦的是：AI 应该去哪里写<\/h2>/);
+  assert.match(html, /PROJECTS\.md/);
 });
 
 test("filters articles by keyword and tag", async () => {
