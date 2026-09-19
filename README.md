@@ -25,7 +25,7 @@ npm run dev
 npm run build
 ```
 
-This starter does not use `wrangler.jsonc`.
+`wrangler.jsonc` 定义 Worker 入口，本地 D1 绑定由 `vite.config.ts` 注入。
 
 ## Included Shape
 
@@ -105,3 +105,18 @@ actions tied to the current ChatGPT user. Leave public content anonymous.
 
 - [vinext Documentation](https://github.com/cloudflare/vinext)
 - [Drizzle D1 Guide](https://orm.drizzle.team/docs/get-started/d1-new)
+
+## 文章点击数
+
+文章详情在浏览器加载后通过 POST 计数一次，刷新或重新打开会再次计数；列表和搜索仅通过 GET 读取。计数是页面浏览次数，不是独立访客数，历史访问不回填。服务端校验文章存在和同源请求，使用 D1 原子递增；未连接数据库或请求失败时显示 `— 次点击`，不影响阅读。
+
+`.openai/hosting.json` 已启用 `DB`，迁移在 `drizzle/`，构建会打包进 `dist/.openai/` 供 Sites 部署应用。Git 推送本身不代表数据库已经部署。使用独立 Cloudflare 部署时，需要绑定真实 D1 数据库并先应用迁移，不能使用本地占位数据库 ID。
+
+本地初始化（先执行 `npm run build`）：
+
+```bash
+npx wrangler d1 execute DB --config dist/server/wrangler.json --local --file drizzle/0000_loud_siren.sql
+npm run dev
+```
+
+`npm test` 在本地 Worker / D1 环境中验证页面渲染、并发计数、只读请求和无效写入；测试使用独立临时数据库。

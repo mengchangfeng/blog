@@ -1,16 +1,31 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-async function render(pathname = "/") {
-  const workerUrl = new URL("../dist/server/index.js", import.meta.url);
-  workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}`);
-  const { default: worker } = await import(workerUrl.href);
+import { before, after } from "node:test";
+import { execFileSync } from "node:child_process";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { unstable_dev } from "wrangler";
 
-  return worker.fetch(
-    new Request(`http://localhost${pathname}`, { headers: { accept: "text/html" } }),
-    { ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) } },
-    { waitUntil() {}, passThroughOnException() {} },
-  );
+let worker;
+const storage = mkdtempSync(join(tmpdir(), "blog-test-"));
+before(async () => {
+  execFileSync(process.execPath, ["node_modules/wrangler/bin/wrangler.js", "d1", "execute", "DB",
+    "--config", "dist/server/wrangler.json", "--local", "--persist-to", storage,
+    "--file", "drizzle/0000_loud_siren.sql"], { stdio: "pipe" });
+  worker = await unstable_dev("dist/server/index.js", {
+    config: "dist/server/wrangler.json", local: true, persistTo: storage,
+    experimental: { disableExperimentalWarning: true },
+  });
+});
+after(async () => {
+  await worker?.stop();
+  rmSync(storage, { recursive: true, force: true });
+});
+
+async function render(pathname = "/") {
+  return worker.fetch(pathname, { headers: { accept: "text/html" } });
 }
 
 test("renders the article list homepage", async () => {
@@ -69,4 +84,20 @@ test("renders About from Markdown at the About route", async () => {
   assert.match(html, /<h1>About<\/h1>/);
   assert.match(html, /你好，我是 Meng。/);
   assert.match(html, /<article class="markdown-body article-content">/);
+});
+
+
+test("persists atomic article counts and rejects invalid writes", async () => {
+  const path = `/api/views/${encodeURIComponent("我给AI搭了一个跨设备项目路由层")}`;
+  const read = () => worker.fetch(path).then((r) => r.json());
+  assert.deepEqual(await read(), { views: 0 });
+  const origin = `http://${worker.address}:${worker.port}`;
+  const results = await Promise.all(Array.from({ length: 10 }, () =>
+    fetch(`${origin}${path}`, { method: "POST", headers: { origin } })));
+  assert.ok(results.every((r) => r.status === 200));
+  assert.deepEqual(await read(), { views: 10 });
+  assert.deepEqual(await read(), { views: 10 });
+  assert.equal((await worker.fetch(path, { method: "POST", headers: { origin: "https://other.example" } })).status, 403);
+  assert.equal((await fetch(`${origin}/api/views/missing`, { method: "POST", headers: { origin } })).status, 404);
+  assert.deepEqual(await read(), { views: 10 });
 });
